@@ -27,6 +27,15 @@ void map_reset();
 void gotoxy(int x, int y);
 void map();
 char start();
+void new_block() {
+	int block1[4][4] = { { 0,0,0,0 }, {0, -2, -2, 0}, {0, -2, -2, 0} ,{0, 0, 0, 0} };
+	int block2[4][4];
+	int block3[4][4];
+	int block4[4][4];
+	int block5[4][4];
+	int temp[4][4];
+
+}
 void main() {
 	char choice;
 	choice = start();
@@ -61,10 +70,11 @@ char start() {
 	return num;
 }
 void map() {
+		
 	for (int i = 0; i < MAP_Y; i++) {
 		for (int j = 0; j < MAP_X; j++) {
 			if (main_cpy[i][j] != main_org[i][j]) {
-				gotoxy(MAIN_X+j,MAIN_Y+i);
+				gotoxy(MAIN_X + j, MAIN_Y + i);
 				switch (main_org[i][j])
 				{
 				case ACTIVE_BLOCK:{ //움직이고 있는 블럭
@@ -117,7 +127,7 @@ void map_reset() {
 		main_org[2][i] = CEILLING;
 	 
 }
-void gotoxy(int x, int y) { 
-	COORD pos = { x,y };
+void gotoxy(int x, int y) { //gotoxy함수 
+	COORD pos = { 2 * x,y };
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
