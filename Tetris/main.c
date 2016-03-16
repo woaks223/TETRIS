@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <time.h>
+#include <process.h>
 
 #pragma warning (disable:4996)
 
@@ -31,7 +32,8 @@ int b_x = (MAP_X / 2) - 1; //블럭의 x좌표
 int b_y = 0; //블럭의 y좌표
 int temp[4][4];
 int key = 0;
-
+int crash_num = 1;
+int game_speed = 1000;
 int check_crash(int x, int y);
 void key_ent();
 void move_block(int key);
@@ -42,18 +44,20 @@ char start();
 void new_block();
 int** block_turn(int block[4][4]);
 void setcursortype(CURSOR_TYPE c);
+void auto_down_blcok(void *p);
 
 void main() {
 	char choice;
 	setcursortype(NOCURSOR);
 	choice = start();
+	_beginthread(auto_down_blcok, 0, 0);
 	if (choice == '1') {
 		map_reset();
 		while (1) {
 			map();
-			if(new_block_on==1) new_block();
+			if (new_block_on == 1) new_block();
 			key_ent();
-			//move_block(DOWN);
+			
 		}
 	}
 	else {
@@ -62,6 +66,29 @@ void main() {
 	return;
 }
 
+//자동으로 내려가는 부분
+void auto_down_blcok(void *p) {
+	Sleep(1000);
+	while (1) {
+		int temp_ = 0;
+
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				if (temp[i][j] == -2 && main_org[b_y+1+i][b_x+j]>0) {
+					temp_++;
+				}
+			}
+		}
+		if (temp_ != 0) crash_num = 0;
+		else {
+			crash_num = 1;
+			move_block(DOWN);
+		}
+		Sleep(game_speed);
+	}
+} 
+
+//커서 없애는 함수
 void setcursortype(CURSOR_TYPE c) { //커서숨기는 함수 
 	CONSOLE_CURSOR_INFO CurInfo;
 
@@ -81,43 +108,53 @@ void setcursortype(CURSOR_TYPE c) { //커서숨기는 함수
 	}
 	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &CurInfo);
 }
-	void key_ent() {
-	key = 0;
-		if (kbhit()) {
-			
-			key = getch();
 
-			if (key == 224) {
-				
-				do {
-					key = getch();
-				} while (key == 244);
-				switch (key)
-				{
-				case DOWN: {
-					if ((check_crash(b_x, b_y+1))==1) move_block(DOWN);
-					break;
-				}
-				case RIGHT: {
-					break;
-				}
-				case LEFT: {
-					break;
-				}
-				case UP: {
-					break;
-				}
-				default:
-					break;
-				}
-			}
-			else {
-				printf("%d", key);
-			}
+//키 입력받는 함수
+void key_ent() {
+	key = 0;
+	if (kbhit()) {
+
+		key = getch();
+
+		if (key == 224) {
+
+			do {
+				key = getch();
+			} while (key == 244);
 			
+			switch (key)
+			{
+			case DOWN: {
+				check_crash(b_x, b_y + 1);
+				if (crash_num == 1) move_block(DOWN);
+				break;
+			}
+			case RIGHT: {
+				check_crash(b_x + 1, b_y);
+				if (crash_num == 1) move_block(RIGHT);
+				break;
+			}
+			case LEFT: {
+				check_crash(b_x - 1, b_y);
+				if (crash_num == 1) move_block(LEFT);
+				break;
+			}
+			case UP: {
+				break;
+			}
+			default:
+				break;
+			}
 		}
-		
+		else {
+
+		}
+
+	}
+	fflush(stdin);
 }
+
+//초기화면
 char start() {
 	printf("                                                                           \n\n\n"); Sleep(50);
 	printf("                                                ■■■                         \n"); Sleep(50);
@@ -132,20 +169,22 @@ char start() {
 	printf("                                                                    ■■       \n"); Sleep(50);
 	printf("                             1. START                                          \n"); Sleep(50);
 	printf("                             2. EXIT                                           \n"); Sleep(50);
-	printf("                                                                               \n"); 
-	char num=getch();
+	printf("                                                                               \n");
+	char num = getch();
 	system("cls");
 	return num;
 }
+
+//맵을 그려주는 함수
 void map() {
-		
+
 	for (int i = 0; i < MAP_Y; i++) {
 		for (int j = 0; j < MAP_X; j++) {
 			if (main_cpy[i][j] != main_org[i][j]) {
 				gotoxy(MAIN_X + j, MAIN_Y + i);
 				switch (main_org[i][j])
 				{
-				case ACTIVE_BLOCK:{ //움직이고 있는 블럭
+				case ACTIVE_BLOCK: { //움직이고 있는 블럭
 					printf("■");
 					break;
 				}
@@ -177,6 +216,8 @@ void map() {
 		}
 	}
 }
+
+//초기 맵 설정
 void map_reset() {
 	for (int i = 0; i < MAP_Y; i++) {
 		for (int j = 0; j < MAP_X; j++) {
@@ -191,21 +232,25 @@ void map_reset() {
 	for (int j = 0; j < MAP_X; j++) {
 		main_org[MAP_Y - 1][j] = WALL;
 	}
-	for (int i = 1; i < MAP_X-1; i++)
+	for (int i = 1; i < MAP_X - 1; i++)
 		main_org[2][i] = CEILLING;
 	new_block();
 }
+
+//gotoxy 함수
 void gotoxy(int x, int y) { //gotoxy함수 
 	COORD pos = { 2 * x,y };
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
+
+//블럭생성 함수
 void new_block() {
 	int block[5][4][4] = {
-		{ { 0,0,0,0 },{ 0, 1, 1, 0 },{ 0, 1, 1, 0 } ,{ 0, 0, 0, 0 } },
-		{ { 0,0,0,0 },{ 0,1,0,0 },{ 0,1,1,0 },{ 0,1,0,0 } },
-		{ { 0,0,1,0 },{ 0,0,1,0 },{ 0,0,1,0 },{ 0,0,1,0 } },
-		{ { 0,1,0,0 },{ 0,1,1,0 },{ 0,0,1,0 },{ 0,0,0,0 } },
-		{ { 0,0,1,0 },{ 0,1,1,0 },{ 0,1,0,0 },{ 0,0,0,0 } },
+		{ { 0,0,0,0 },{ 0, -2, -2, 0 },{ 0, -2, -2, 0 } ,{ 0, 0, 0, 0 } },
+		{ { 0,0,0,0 },{ 0,-2,0,0 },{ 0,-2,-2,0 },{ 0,-2,0,0 } },
+		{ { 0,0,-2,0 },{ 0,0,-2,0 },{ 0,0,-2,0 },{ 0,0,-2,0 } },
+		{ { 0,-2,0,0 },{ 0,-2,-2,0 },{ 0,0,-2,0 },{ 0,0,0,0 } },
+		{ { 0,0,-2,0 },{ 0,-2,-2,0 },{ 0,-2,0,0 },{ 0,0,0,0 } },
 	};
 
 	int random_block;
@@ -219,33 +264,40 @@ void new_block() {
 			temp[i][j] = block[random_block][i][j];
 		}
 	}
-	
+
 }
+
+//충돌 체크함수
 int check_crash(int x, int y) {
-	int n = 1;
-	for (int i = 0; i < 4; i++) {
+	int temp_ = 0;
+
+	for (int i = 0; i < 4;i++) {
 		for (int j = 0; j < 4; j++) {
-			if (temp[i][j] == 1 && main_org[y + i][x + j]>0) 
-				return n-1;
+			if (temp[i][j] == -2 && main_org[y + i][x + j]>0) { //오류
+				temp_++;
+			} 
 		}
 	}
-	return n;
+	if (temp_ != 0) crash_num=0;
+	else crash_num = 1;
 }
+
+//블럭 이동함수
 void move_block(int key) {
-	
+
 	switch (key)
 	{
 	case DOWN: { //아래
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1) {
+				if (temp[i][j] == -2) {
 					main_org[b_y + i][b_x + j] = EMPTY;
 				}
 			}
 		}
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1)
+				if (temp[i][j] == -2)
 					main_org[b_y + i + 1][b_x + j] = ACTIVE_BLOCK;
 			}
 		}
@@ -255,7 +307,7 @@ void move_block(int key) {
 	case RIGHT: { //오른쪽
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1) {
+				if (temp[i][j] == -2) {
 					main_org[b_y + i][b_x + j] = EMPTY;
 				}
 			}
@@ -263,7 +315,7 @@ void move_block(int key) {
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				if (temp[i][j] == 1)
-					main_org[b_y + i + 1][b_x + j+1] = ACTIVE_BLOCK;
+					main_org[b_y + i][b_x + j + 1] = ACTIVE_BLOCK;
 			}
 		}
 		b_x++;
@@ -272,15 +324,15 @@ void move_block(int key) {
 	case LEFT: { //왼쪽
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1) {
+				if (temp[i][j] == -2) {
 					main_org[b_y + i][b_x + j] = EMPTY;
 				}
 			}
 		}
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1)
-					main_org[b_y + i + 1][b_x + j-1] = ACTIVE_BLOCK;
+				if (temp[i][j] == -2)
+					main_org[b_y + i + 1][b_x + j - 1] = ACTIVE_BLOCK;
 			}
 		}
 		b_x--;
@@ -293,8 +345,10 @@ void move_block(int key) {
 	default:
 		break;
 	}
-	
+
 }
+
+//블럭 회전 함수
 int** block_turn(int block[4][4]) {
 
 }
