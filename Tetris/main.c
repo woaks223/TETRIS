@@ -12,8 +12,8 @@
 #define LEFT 75
 #define UP 72
 #define DOWN 80
-#define MAP_X 11
-#define MAP_Y 15
+#define MAP_X 15
+#define MAP_Y 25
 #define MAIN_X 3
 #define MAIN_Y 1
 
@@ -34,7 +34,9 @@ int temp[4][4];
 int key = 0;
 int crash_num = 1;
 int game_speed = 1000;
-int check_crash(int x, int y);
+
+void check_crash_turn(int x, int y, int arr[4][4]);
+void check_crash(int x, int y);
 void key_ent();
 void move_block(int key);
 void map_reset();
@@ -42,9 +44,10 @@ void gotoxy(int x, int y);
 void map();
 char start();
 void new_block();
-int** block_turn(int block[4][4]);
+void block_turn(int block[4][4]);
 void setcursortype(CURSOR_TYPE c);
 void auto_down_blcok(void *p);
+void line_check();
 
 void main() {
 	char choice;
@@ -57,7 +60,7 @@ void main() {
 			map();
 			if (new_block_on == 1) new_block();
 			key_ent();
-			
+
 		}
 	}
 	else {
@@ -71,22 +74,19 @@ void auto_down_blcok(void *p) {
 	Sleep(1000);
 	while (1) {
 		int temp_ = 0;
-
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == -2 && main_org[b_y+1+i][b_x+j]>0) {
-					temp_++;
-				}
-			}
-		}
-		if (temp_ != 0) crash_num = 0;
-		else {
-			crash_num = 1;
+		check_crash(b_x, b_y + 1);
+		if(crash_num==1)
 			move_block(DOWN);
+		else {
+			for (int i = 0; i < MAP_Y; i++)
+				for (int j = 0; j < MAP_X; j++)
+					if (main_org[i][j] == ACTIVE_BLOCK) main_org[i][j] = INACTIVE_BLOCK;
+			new_block();
 		}
+
 		Sleep(game_speed);
 	}
-} 
+}
 
 //커서 없애는 함수
 void setcursortype(CURSOR_TYPE c) { //커서숨기는 함수 
@@ -121,7 +121,7 @@ void key_ent() {
 			do {
 				key = getch();
 			} while (key == 244);
-			
+
 			switch (key)
 			{
 			case DOWN: {
@@ -140,6 +140,7 @@ void key_ent() {
 				break;
 			}
 			case UP: {
+				block_turn(temp);
 				break;
 			}
 			default:
@@ -256,7 +257,8 @@ void new_block() {
 	int random_block;
 
 	srand(time(NULL));
-
+	b_x = (MAIN_X /2)+1;
+	b_y = 0;
 	random_block = rand() % 5;
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
@@ -268,20 +270,32 @@ void new_block() {
 }
 
 //충돌 체크함수
-int check_crash(int x, int y) {
+void check_crash(int x, int y) {
 	int temp_ = 0;
 
-	for (int i = 0; i < 4;i++) {
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			if (temp[i][j] == -2 && main_org[y + i][x + j]>0) { 
+				temp_++;
+			}
+		}
+	}
+	if (temp_ != 0) crash_num = 0;
+	else crash_num = 1;
+}
+void check_crash_turn(int x, int y,int arr[4][4]) {
+	int temp_ = 0;
+
+	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			if (temp[i][j] == -2 && main_org[y + i][x + j]>0) { //오류
 				temp_++;
-			} 
+			}
 		}
 	}
-	if (temp_ != 0) crash_num=0;
+	if (temp_ != 0) crash_num = 0;
 	else crash_num = 1;
 }
-
 //블럭 이동함수
 void move_block(int key) {
 
@@ -298,7 +312,7 @@ void move_block(int key) {
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				if (temp[i][j] == -2)
-					main_org[b_y + i + 1][b_x + j] = ACTIVE_BLOCK;
+					main_org[b_y + i + 1][b_x + j] = ACTIVE_BLOCK; //함수로 줄이기
 			}
 		}
 		b_y++;
@@ -314,7 +328,7 @@ void move_block(int key) {
 		}
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
-				if (temp[i][j] == 1)
+				if (temp[i][j] == -2)
 					main_org[b_y + i][b_x + j + 1] = ACTIVE_BLOCK;
 			}
 		}
@@ -332,7 +346,7 @@ void move_block(int key) {
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				if (temp[i][j] == -2)
-					main_org[b_y + i + 1][b_x + j - 1] = ACTIVE_BLOCK;
+					main_org[b_y + i][b_x + j - 1] = ACTIVE_BLOCK;
 			}
 		}
 		b_x--;
@@ -345,10 +359,44 @@ void move_block(int key) {
 	default:
 		break;
 	}
-
+	
 }
 
 //블럭 회전 함수
-int** block_turn(int block[4][4]) {
+void block_turn(int block[4][4]) {
+	int arr[4][4];
+	int n1, n2;
+	n1 = 0;
+
+	for (int i = 0; i < 4; i++) {
+		n2 = 0;
+		for (int j = 3; j > -1; j--) {
+			arr[n1][n2] = block[j][i];
+			n2++;
+		}
+		n1++;
+	}
+	check_crash_turn(b_x+1, b_y+1, *arr);
+	if (crash_num == 1) {
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				if (temp[i][j] == -2) {
+					main_org[b_y + i][b_x + j] = EMPTY;
+				}
+			}
+		}
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				temp[i][j] = arr[i][j];
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				if (temp[i][j] == -2)
+					main_org[b_y + i][b_x + j] = ACTIVE_BLOCK;
+			}
+		}
+	}
+}
+
+void line_check() {
 
 }
